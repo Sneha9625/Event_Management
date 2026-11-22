@@ -63,7 +63,10 @@ Event_Management_System/
 │   ├── middleware/     authMiddleware.js, roleMiddleware.js, upload.js, errorHandler.js, validate.js
 │   ├── utils/          sendEmail.js, generateOtp.js, geocode.js, uploadToCloudinary.js
 │   ├── seed.js         demo data
-│   ├── server.js       app entry point
+│   ├── app.js          the Express app (routes + middleware)
+│   ├── server.js       local/Render entry: connects DB + app.listen()
+│   ├── api/index.js    Vercel serverless entry (uses app.js)
+│   ├── vercel.json     sends every URL to api/index.js
 │   └── .env.example
 └── client/
     ├── src/
@@ -197,28 +200,41 @@ curl -X POST http://localhost:5000/api/registrations/<EVENT_ID> -H "Authorizatio
 ### 1. Database: MongoDB Atlas
 1. Create a free **M0** cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas).
 2. **Database Access** → add a user + password.
-3. **Network Access** → allow `0.0.0.0/0` (Render's IPs change).
+3. **Network Access** → allow `0.0.0.0/0` (Vercel/Render IPs change, so a fixed IP list won't work).
 4. **Connect → Drivers** → copy the connection string and add a DB name:
    `mongodb+srv://user:pass@cluster0.xxxx.mongodb.net/eventhub`
 
-### 2. Backend: Render
+You will create **two Vercel projects from the same GitHub repo**: one for `server/`, one for `client/`.
+
+### 2. Backend: Vercel (serverless)
+How it works: `server/api/index.js` is the serverless function, and `server/vercel.json` sends every URL to it.
+The Express app itself lives in `server/app.js` (shared with `server.js`, which is only used locally).
+
 1. Push the project to GitHub.
-2. Render → **New → Web Service** → pick the repo.
-3. **Root Directory:** `server` · **Build:** `npm install` · **Start:** `npm start`
-4. Add the env vars from `server/.env.example` (`NODE_ENV=production`, Atlas `MONGO_URI`, `JWT_SECRET`, email, Cloudinary). Leave `CLIENT_URL` for now.
-5. Deploy and note the URL, e.g. `https://eventhub-api.onrender.com`.
+2. Vercel → **Add New → Project** → import the repo.
+3. **Root Directory:** `server` · **Framework Preset:** `Other` · leave Build/Output commands empty.
+4. **Environment Variables** (Vercel does *not* read your `.env` file): add
+   `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN=7d`, `NODE_ENV=production`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`,
+   `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (and optionally `NOMINATIM_USER_AGENT`).
+   Leave `CLIENT_URL` for step 4.
+5. Deploy and open the URL, e.g. `https://eventhub-api.vercel.app` → you should see `"EventHub API is running"`.
 6. (Optional) seed Atlas from your machine: temporarily set `MONGO_URI` locally to the Atlas string and run `npm run seed`.
 
+> Serverless notes: the first request after a quiet period takes a second or two (cold start + DB connect).
+> Uploads are capped at 2MB by the app (Vercel's own limit is 4.5MB). Rate limits are counted per function instance.
+
+*Prefer an always-on server?* Render works too: **New → Web Service**, Root Directory `server`, Build `npm install`, Start `npm start`, same env vars.
+
 ### 3. Frontend: Vercel
-1. Vercel → **Add New Project** → pick the repo.
+1. Vercel → **Add New → Project** → import the **same** repo again.
 2. **Root Directory:** `client` (Vercel detects Vite automatically).
-3. Env var: `VITE_API_URL=https://eventhub-api.onrender.com/api`
+3. Env var: `VITE_API_URL=https://eventhub-api.vercel.app/api` (your backend URL + `/api`).
 4. Deploy. `client/vercel.json` makes deep links like `/events/123` work on refresh.
 
 ### 4. Connect them
-Back on Render, set `CLIENT_URL=https://your-app.vercel.app` (no trailing slash) and redeploy.
-
-> 💡 Render's free tier sleeps after inactivity, so the first request can take ~30 seconds.
+In the **backend** project → Settings → Environment Variables, set
+`CLIENT_URL=https://your-frontend.vercel.app` (comma-separate several URLs if needed), then **Redeploy** the backend.
+Env var changes only apply after a redeploy — on both projects.
 
 ---
 

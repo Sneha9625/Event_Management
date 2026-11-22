@@ -39,9 +39,13 @@ const registerForEvent = async (req, res, next) => {
     }
 
     // Email is a nice-to-have: if it fails, the RSVP should still succeed.
-    sendEmail(req.user.email, `You're going to ${event.title}!`, rsvpEmailTemplate(req.user.name, event)).catch(
-      (err) => console.error(`RSVP email failed: ${err.message}`)
-    );
+    // We await it (instead of "fire and forget") because serverless hosts like
+    // Vercel freeze the function as soon as the response is sent.
+    try {
+      await sendEmail(req.user.email, `You're going to ${event.title}!`, rsvpEmailTemplate(req.user.name, event));
+    } catch (err) {
+      console.error(`RSVP email failed: ${err.message}`);
+    }
 
     res.status(201).json({ success: true, message: "You're registered! 🎉", data: registration });
   } catch (error) {
