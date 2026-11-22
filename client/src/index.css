@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Tailwind v4 keeps its "config" in CSS: here we set Inter as the default font
+   and register a few small animations used by menus and modals. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-pop-in: pop-in 180ms ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+/* Hide the scrollbar on horizontally scrollable rows (category chips) */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Full-width app: no default margins, no max-width on #root */
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  @apply bg-slate-50 font-sans text-slate-600 antialiased;
+}
+
+/* Headings use the display font for a more polished, editorial look */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
